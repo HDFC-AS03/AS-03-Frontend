@@ -19,7 +19,7 @@ function LandingPage() {
       <nav className="lp-nav">
         <div className="lp-logo">
           <div className="lp-logo-icon">💳</div>
-          <span className="lp-logo-text">BankDash</span>
+          <span className="lp-logo-text">Mywallet</span>
         </div>
         <div className="lp-nav-links">
           <a href="#">Features</a>
@@ -41,11 +41,11 @@ function LandingPage() {
           </div>
 
           <h1 className="landing-title">
-            BankDash
+            Mywallet
             <span className="title-line">.</span>
           </h1>
 
-          <h2 className="landing-subtitle">An Online Wallet Platform</h2>
+          <h2 className="landing-subtitle">A personal Wallet Platform</h2>
 
           <p className="landing-description">
             BankDash is a secure and modern digital wallet platform
@@ -60,13 +60,19 @@ function LandingPage() {
             <div className="lp-pill">🛡️ Role-based access</div>
           </div>
 
-          <div className="lp-actions">
-            <button className="get-started-btn" onClick={handleGetStarted}>
-              Get Started
-              <span className="btn-arrow">→</span>
-            </button>
-            <button className="lp-ghost-btn">Watch demo ▶</button>
-          </div>
+        <div className="lp-actions">
+  <button className="get-started-btn" onClick={handleGetStarted}>
+    Get Started
+    <span className="btn-arrow">→</span>
+  </button>
+
+  <button 
+    className="lp-ghost-btn" 
+    onClick={() => window.open('https://youtu.be/dQw4w9WgXcQ?si=bUW8a11DvoNarOOm', '_blank', 'noopener,noreferrer')}
+  >
+    Watch demo ▶
+  </button>
+</div>
 
           {/* Stats row */}
           <div className="lp-stats">
