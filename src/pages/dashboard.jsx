@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useRef } from "react";
 import { getCurrentUser, logout } from "../api/auth";
 import "./Dashboard.css";
+// IMPORT the refactored UserManagement component
+import UserManagement from "./UserManagement"; 
 
 // ─── ROLE DETECTION ───────────────────────────────────────────────────────────
 function detectRole(user) {
@@ -16,115 +18,56 @@ function detectRole(user) {
 // ─── SIDEBAR CONFIG ───────────────────────────────────────────────────────────
 const SIDEBAR_CONFIG = {
   admin: {
-    brand: "BankDash. Admin",
+    brand: "Mywallet. Admin",
     accentVar: "--admin-accent",
     navItems: [
-      { icon: "⊞",  label: "System Overview",  active: true  },
-      { icon: "👥", label: "User Management",  active: false },
-      { icon: "🔐", label: "Security Logs",    active: false },
-      { icon: "⚙️", label: "API Settings",     active: false },
-      { icon: "📊", label: "Audit Trail",      active: false },
-      { icon: "🛠️", label: "Configuration",    active: false },
+      { icon: "⊞",  label: "System Overview"  },
+      { icon: "👥", label: "User Management"  }, 
+      { icon: "🔐", label: "Security Logs"    },
+      { icon: "⚙️", label: "API Settings"     },
+      { icon: "📊", label: "Audit Trail"      },
+      { icon: "🛠️", label: "Configuration"    },
     ],
   },
   manager: {
-    brand: "BankDash.",
+    brand: "Mywallet. Manager",
     accentVar: "--mgr-accent",
     navItems: [
-      { icon: "⊞",  label: "Overview",   active: true  },
-      { icon: "📩", label: "Inbox",      active: false },
-      { icon: "👤", label: "Accounts",   active: false },
-      { icon: "📄", label: "Invoices",   active: false },
-      { icon: "📈", label: "Planning",   active: false },
-      { icon: "⚙️", label: "Settings",   active: false },
+      { icon: "⊞",  label: "Overview"   },
+      { icon: "📩", label: "Inbox"      },
+      { icon: "👤", label: "Accounts"   },
+      { icon: "📄", label: "Invoices"   },
+      { icon: "📈", label: "Planning"   },
+      { icon: "⚙️", label: "Settings"   },
     ],
   },
   user: {
-    brand: "BankDash.",
+    brand: "Mywallet. User",
     accentVar: "--user-accent",
     navItems: [
-      { icon: "⊞",  label: "My Wallet",    active: true  },
-      { icon: "🔄", label: "Transactions", active: false },
-      { icon: "💳", label: "Cards",        active: false },
-      { icon: "🏦", label: "Savings",      active: false },
-      { icon: "💬", label: "Support",      active: false },
+      { icon: "⊞",  label: "Wallet"       },
+      { icon: "🔄", label: "Transactions" },
+      { icon: "💳", label: "Cards"        },
+      { icon: "🏦", label: "Savings"      },
+      { icon: "💬", label: "Support"      },
     ],
   },
 };
 
-// ─── MINI BAR CHART ───────────────────────────────────────────────────────────
+// ─── CHART HELPERS ────────────────────────────────────────────────────────────
 function BarChart({ bars, color }) {
   const max = Math.max(...bars);
   return (
     <div className="bar-chart">
       {bars.map((v, i) => (
         <div key={i} className="bar-col">
-          <div
-            className="bar-fill"
-            style={{
-              height: `${(v / max) * 100}%`,
-              background: color,
-              animationDelay: `${i * 60}ms`,
-            }}
-          />
+          <div className="bar-fill" style={{ height: `${(v / max) * 100}%`, background: color, animationDelay: `${i * 60}ms` }} />
         </div>
       ))}
     </div>
   );
 }
 
-// ─── SPARKLINE ────────────────────────────────────────────────────────────────
-function Sparkline({ data, color, width = 100, height = 32 }) {
-  const max = Math.max(...data), min = Math.min(...data);
-  const pts = data
-    .map((v, i) => {
-      const x = (i / (data.length - 1)) * width;
-      const y = height - ((v - min) / (max - min || 1)) * (height - 4) - 2;
-      return `${x},${y}`;
-    })
-    .join(" ");
-  return (
-    <svg width={width} height={height} style={{ overflow: "visible", display: "block" }}>
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <polyline
-        points={`0,${height} ${pts} ${width},${height}`}
-        fill={`${color}25`}
-        stroke="none"
-      />
-    </svg>
-  );
-}
-
-// ─── DONUT RING ───────────────────────────────────────────────────────────────
-function DonutRing({ segments, total, label }) {
-  const r = 52, cx = 64, cy = 64, circ = 2 * Math.PI * r;
-  let cum = 0;
-  return (
-    <svg width="128" height="128" viewBox="0 0 128 128">
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f1f5f9" strokeWidth="18" />
-      {segments.map((seg, i) => {
-        const frac = seg.value / total;
-        const dash = frac * circ;
-        const offset = circ - cum * circ;
-        cum += frac;
-        return (
-          <circle
-            key={i} cx={cx} cy={cy} r={r} fill="none"
-            stroke={seg.color} strokeWidth="18"
-            strokeDasharray={`${dash} ${circ - dash}`}
-            strokeDashoffset={offset}
-            transform="rotate(-90 64 64)"
-            style={{ transition: "stroke-dasharray 0.9s ease" }}
-          />
-        );
-      })}
-      <text x={cx} y={cy - 5} textAnchor="middle" fontSize="18" fontWeight="800" fill="#1e293b">{total.toLocaleString()}</text>
-      <text x={cx} y={cy + 14} textAnchor="middle" fontSize="10" fill="#94a3b8">{label}</text>
-    </svg>
-  );
-}
-
-// ─── PROGRESS BAR ─────────────────────────────────────────────────────────────
 function ProgressBar({ value, color }) {
   return (
     <div className="progress-track">
@@ -134,24 +77,23 @@ function ProgressBar({ value, color }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// ADMIN DASHBOARD
+// VIEW 1: ADMIN DASHBOARD
 // ═══════════════════════════════════════════════════════════════════════════════
 function AdminView({ user }) {
   const auditLogs = [
-    { icon: "🔑", ev: "Admin login",     actor: user?.preferred_username || "admin", time: "Just now",  col: "#10b981" },
-    { icon: "🛡️", ev: "Role updated",   actor: "system",                             time: "5 min ago", col: "#f97316" },
-    { icon: "🚫", ev: "Failed login",   actor: "unknown",                             time: "12 min",    col: "#ef4444" },
-    { icon: "📤", ev: "Data export",    actor: "manager01",                           time: "1h ago",    col: "#6366f1" },
-    { icon: "💾", ev: "Backup created", actor: "system",                             time: "3h ago",    col: "#10b981" },
+    { icon: "🔑", ev: "Admin login",    actor: user?.preferred_username || "admin", time: "Just now",  col: "#10b981" },
+    { icon: "🛡️", ev: "Role updated",   actor: "system",                            time: "5 min ago", col: "#f97316" },
+    { icon: "🚫", ev: "Failed login",   actor: "unknown",                           time: "12 min",    col: "#ef4444" },
+    { icon: "📤", ev: "Data export",    actor: "manager01",                         time: "1h ago",    col: "#6366f1" },
+    { icon: "💾", ev: "Backup created", actor: "system",                            time: "3h ago",    col: "#10b981" },
   ];
   const trafficBars = [38, 52, 45, 68, 72, 65, 80, 77, 90, 85, 95, 92];
 
   return (
     <>
-      {/* System status strip */}
       <div className="admin-status-strip">
         {[
-          { label: "System Status",  val: "🟢 Operational", },
+          { label: "System Status",  val: "🟢 Operational" },
           { label: "Active Sessions",val: "384"             },
           { label: "DB Uptime",      val: "99.9%"           },
           { label: "Last Backup",    val: "3h ago"          },
@@ -164,7 +106,6 @@ function AdminView({ user }) {
         ))}
       </div>
 
-      {/* KPI cards */}
       <div className="kpi-row four-col">
         {[
           { label: "Total Users",      val: "14,203", trend: "+8%",  up: true,  icon: "👤" },
@@ -184,7 +125,6 @@ function AdminView({ user }) {
       </div>
 
       <div className="mid-row">
-        {/* Traffic chart */}
         <div className="card flex-2">
           <div className="card-head">
             <h3>System Traffic</h3>
@@ -197,7 +137,7 @@ function AdminView({ user }) {
           <div className="chart-row">
             <BarChart bars={trafficBars} color="var(--admin-accent)" />
             <div className="chart-side-legend">
-              {[["🌐","Web","8,432"],["📱","Mobile","4,210"],["🔌","API","1,561"]].map(([ic,l,v])=>(
+              {[["🌐","Web","8,432"],["📱","Mobile","4,210"],["🔌","API","1,561"]].map(([ic,l,v]) => (
                 <div key={l} className="legend-row">
                   <span>{ic}</span>
                   <div>
@@ -210,14 +150,13 @@ function AdminView({ user }) {
           </div>
         </div>
 
-        {/* System health */}
         <div className="card flex-1">
           <div className="card-head"><h3>System Health</h3></div>
           {[
-            { label: "CPU Usage",  val: 34, color: "var(--admin-accent)" },
-            { label: "Memory",     val: 61, color: "#f97316"             },
-            { label: "Disk",       val: 48, color: "#10b981"             },
-            { label: "Network I/O",val: 72, color: "#6366f1"             },
+            { label: "CPU Usage",   val: 34, color: "var(--admin-accent)" },
+            { label: "Memory",      val: 61, color: "#f97316"             },
+            { label: "Disk",        val: 48, color: "#10b981"             },
+            { label: "Network I/O", val: 72, color: "#6366f1"             },
           ].map((m) => (
             <div key={m.label} className="health-row">
               <div className="health-label-row">
@@ -231,11 +170,10 @@ function AdminView({ user }) {
       </div>
 
       <div className="bot-row">
-        {/* User table */}
         <div className="card flex-2">
           <div className="card-head">
-            <h3>User Management</h3>
-            <button className="add-btn admin-add-btn">+ Add User</button>
+            <h3>Recent Activity</h3>
+            <button className="add-btn admin-add-btn">View Full Log</button>
           </div>
           <div className="user-table">
             <div className="table-head">
@@ -274,7 +212,6 @@ function AdminView({ user }) {
           </div>
         </div>
 
-        {/* Audit log */}
         <div className="card flex-1">
           <div className="card-head"><h3>Audit Log</h3></div>
           <div className="audit-list">
@@ -298,25 +235,37 @@ function AdminView({ user }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// MANAGER DASHBOARD
+// VIEW 2: MANAGER DASHBOARD
 // ═══════════════════════════════════════════════════════════════════════════════
 function ManagerView({ user }) {
-  const revBars = [120, 135, 118, 145, 160, 152, 170, 165, 180, 175, 195, 210];
-  const months  = ["J","F","M","A","M","J","J","A","S","O","N","D"];
+  const recentInvoices = [
+    { id: "#INV-2024", client: "TechCorp Ltd",  amount: "$4,200", status: "Paid",    date: "Today",      av: "TC" },
+    { id: "#INV-2025", client: "Designify",     amount: "$1,850", status: "Pending", date: "Yesterday",  av: "DE" },
+    { id: "#INV-2026", client: "Global Sols",   amount: "$9,500", status: "Overdue", date: "Feb 14",     av: "GS" },
+    { id: "#INV-2027", client: "Flora Systems", amount: "$3,120", status: "Paid",    date: "Feb 12",     av: "FS" },
+  ];
+  const teamPerformance = [65, 59, 80, 81, 56, 55, 40, 70, 75, 68, 85, 90];
+  
+  // NEW DUMMY DATA FOR MANAGER
+  const topClients = [
+    { name: "TechCorp Ltd",  val: "$45k", sub: "12 Projects", col: "#6366f1" },
+    { name: "Global Sols",   val: "$28k", sub: "5 Projects",  col: "#8b5cf6" },
+    { name: "Designify",     val: "$12k", sub: "Retainer",    col: "#ec4899" },
+  ];
 
   return (
     <>
-      {/* KPI cards */}
+      {/* 1. Manager KPIs (Status Strip Removed) */}
       <div className="kpi-row four-col">
         {[
-          { label: "Total Revenue",    val: "$284K",  trend: "+12%", up: true,  icon: "💰" },
-          { label: "Managed Accounts", val: "1,482",  trend: "+4%",  up: true,  icon: "👥" },
-          { label: "Invoices Sent",    val: "327",    trend: "-3%",  up: false, icon: "📄" },
-          { label: "Open Tickets",     val: "14",     trend: "-22%", up: true,  icon: "🎫" },
+          { label: "Total Revenue",    val: "$124,500", trend: "+12%", up: true,  icon: "💰" },
+          { label: "Pending Exp.",     val: "$3,200",   trend: "-5%",  up: true,  icon: "📄" },
+          { label: "Client NPS",       val: "78.4",     trend: "+2.1", up: true,  icon: "😊" },
+          { label: "Critical Issues",  val: "2 Open",   trend: "+1",   up: false, icon: "⚠️" },
         ].map((k, i) => (
-          <div key={i} className="kpi-card mgr-kpi" style={{ animationDelay: `${i * 80}ms` }}>
+          <div key={i} className="kpi-card" style={{ animationDelay: `${i * 80}ms`, borderTop: "3px solid var(--mgr-accent)" }}>
             <div className="kpi-top">
-              <div className="kpi-icon-box mgr-icon-box">{k.icon}</div>
+              <div className="kpi-icon-box" style={{ background: "var(--bg-glass)", color: "var(--mgr-accent)" }}>{k.icon}</div>
               <div className={`kpi-badge ${k.up ? "badge-up" : "badge-down"}`}>{k.trend}</div>
             </div>
             <div className="kpi-val">{k.val}</div>
@@ -326,111 +275,77 @@ function ManagerView({ user }) {
       </div>
 
       <div className="mid-row">
-        {/* Revenue bar chart */}
+        {/* 2. Financial/Planning Chart */}
         <div className="card flex-2">
           <div className="card-head">
-            <h3>Revenue Overview</h3>
-            <div className="period-tabs">
-              {["W", "M", "Y"].map((p, i) => (
-                <span key={p} className={`period-tab ${i === 1 ? "active-tab mgr-tab" : ""}`}>{p}</span>
-              ))}
-            </div>
+            <h3>Revenue & Planning</h3>
+            <button className="icon-btn">📅 This Month</button>
           </div>
-          <div className="rev-bar-wrap">
-            <div className="rev-bars">
-              {revBars.map((v, i) => (
-                <div key={i} className="rev-bar-col">
-                  <div
-                    className="rev-bar-fill"
-                    style={{
-                      height: `${(v / 210) * 100}%`,
-                      background: i === 11 ? "var(--mgr-accent)" : "var(--mgr-light)",
-                      boxShadow: i === 11 ? "0 8px 20px var(--mgr-shadow)" : "none",
-                      animationDelay: `${i * 50}ms`,
-                    }}
-                  />
-                  <div className="rev-bar-label">{months[i]}</div>
-                </div>
-              ))}
+          <div className="chart-row">
+            <BarChart bars={teamPerformance} color="var(--mgr-accent)" />
+            <div className="chart-info-box">
+               <div className="stat-group">
+                 <h4>$18.4k</h4>
+                 <span>Proj. Earnings</span>
+               </div>
+               <div className="stat-group">
+                 <h4>82%</h4>
+                 <span>Goal Reached</span>
+               </div>
             </div>
           </div>
         </div>
 
-        {/* Spend donut */}
+        {/* 3. Team List */}
         <div className="card flex-1">
-          <div className="card-head"><h3>Spend Mix</h3></div>
-          <div className="donut-wrap">
-            <DonutRing
-              total={6870}
-              label="Total"
-              segments={[
-                { value: 1332, color: "var(--mgr-accent)" },
-                { value: 2302, color: "#a78bfa" },
-                { value: 1899, color: "#38bdf8" },
-                { value: 1337, color: "#fb923c" },
-              ]}
-            />
-            <div className="donut-legend">
-              {[["Online","$1,332","var(--mgr-accent)"],["Entertain","$2,302","#a78bfa"],["Services","$1,899","#38bdf8"],["Shopping","$1,337","#fb923c"]].map(([l,v,c])=>(
-                <div key={l} className="donut-leg-row">
-                  <div className="donut-dot" style={{ background: c }} />
-                  <div>
-                    <div className="donut-leg-label">{l}</div>
-                    <div className="donut-leg-val">{v}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div className="card-head"><h3>My Team</h3></div>
+          <div className="audit-list">
+             {[
+               { name: "Sarah Jenkins", role: "Senior Dev", status: "Online", col: "#10b981" },
+               { name: "Mike Ross",     role: "Designer",   status: "Away",   col: "#f59e0b" },
+               { name: "Rachel Green",  role: "Product",    status: "Busy",   col: "var(--mgr-accent)" },
+             ].map((m, i) => (
+               <div key={i} className="audit-row">
+                 <div className="mini-av" style={{ background: m.col, color: "#fff", fontSize: "10px" }}>
+                    {m.name.substring(0,1)}
+                 </div>
+                 <div className="audit-text">
+                   <div className="audit-ev">{m.name}</div>
+                   <div className="audit-actor">{m.role}</div>
+                 </div>
+                 <div className="status-dot" style={{ background: m.col }} />
+               </div>
+             ))}
           </div>
         </div>
       </div>
 
+      {/* 4. Invoices & Top Clients */}
       <div className="bot-row">
-        {/* Team performance */}
         <div className="card flex-2">
-          <div className="card-head"><h3>Team Performance</h3></div>
-          <div className="team-list">
-            {[
-              { name: "Sarah Johnson", role: "Senior Analyst",   perf: 92, av: "SJ" },
-              { name: "Mike Chen",     role: "Risk Manager",     perf: 85, av: "MC" },
-              { name: "Priya Patel",   role: "Compliance Lead",  perf: 78, av: "PP" },
-              { name: "James Lee",     role: "Client Relations", perf: 95, av: "JL" },
-            ].map((m, i) => (
-              <div key={i} className="team-row">
-                <div className="mini-av mgr-av">{m.av}</div>
-                <div className="team-info">
-                  <div className="team-name-row">
-                    <div>
-                      <div className="cell-name">{m.name}</div>
-                      <div className="cell-sub">{m.role}</div>
-                    </div>
-                    <div className="team-pct" style={{ color: "var(--mgr-accent)" }}>{m.perf}%</div>
-                  </div>
-                  <ProgressBar value={m.perf} color="var(--mgr-accent)" />
-                </div>
-              </div>
-            ))}
+          <div className="card-head">
+            <h3>Recent Invoices</h3>
+            <button className="add-btn" style={{ background: "var(--mgr-accent)" }}>+ New Invoice</button>
           </div>
-        </div>
-
-        {/* Recent invoices */}
-        <div className="card flex-1">
-          <div className="card-head"><h3>Recent Invoices</h3></div>
-          <div className="invoice-list">
-            {[
-              { id: "#INV-0041", client: "Acme Corp",    amt: "$4,200", status: "Paid"    },
-              { id: "#INV-0040", client: "Globex Ltd",   amt: "$1,800", status: "Pending" },
-              { id: "#INV-0039", client: "Initech",      amt: "$9,500", status: "Paid"    },
-              { id: "#INV-0038", client: "Umbrella Inc", amt: "$640",   status: "Overdue" },
-            ].map((inv, i) => (
-              <div key={i} className="invoice-row">
-                <div>
-                  <div className="inv-id">{inv.id}</div>
-                  <div className="cell-sub">{inv.client}</div>
+          <div className="user-table">
+            <div className="table-head">
+              <span className="th">Invoice ID</span>
+              <span className="th">Client</span>
+              <span className="th">Date</span>
+              <span className="th">Amount</span>
+              <span className="th">Status</span>
+            </div>
+            {recentInvoices.map((inv, i) => (
+              <div key={i} className="table-row">
+                <div className="td"><b>{inv.id}</b></div>
+                <div className="td user-cell">
+                   <div className="mini-av" style={{background: "#e2e8f0", color: "#475569"}}>{inv.av}</div>
+                   <span>{inv.client}</span>
                 </div>
-                <div className="inv-right">
-                  <div className="inv-amt">{inv.amt}</div>
-                  <span className={`status-chip ${inv.status === "Paid" ? "chip-green" : inv.status === "Overdue" ? "chip-red" : "chip-yellow"}`}>
+                <div className="td cell-sub">{inv.date}</div>
+                <div className="td">{inv.amount}</div>
+                <div className="td">
+                  <span className={`status-chip ${inv.status === "Paid" ? "chip-green" : inv.status === "Pending" ? "chip-orange" : "chip-red"}`}>
                     {inv.status}
                   </span>
                 </div>
@@ -438,110 +353,154 @@ function ManagerView({ user }) {
             ))}
           </div>
         </div>
+
+        {/* Top Clients */}
+        <div className="card flex-1">
+           <div className="card-head"><h3>Top Clients</h3></div>
+           <div className="audit-list">
+             {topClients.map((c, i) => (
+               <div key={i} className="audit-row">
+                 <div className="mini-av" style={{ background: c.col, color: "#fff", fontSize: "10px" }}>{c.name.substring(0,1)}</div>
+                 <div className="audit-text">
+                   <div className="audit-ev">{c.name}</div>
+                   <div className="audit-actor">{c.sub}</div>
+                 </div>
+                 <div style={{ fontWeight: "600" }}>{c.val}</div>
+               </div>
+             ))}
+           </div>
+        </div>
       </div>
     </>
   );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// USER DASHBOARD
+// VIEW 3: USER DASHBOARD (COMPLETED)
 // ═══════════════════════════════════════════════════════════════════════════════
 function UserView({ user }) {
-  const spendData = [420, 380, 510, 490, 620, 570, 680, 610, 750, 720, 800, 780];
+  const transactions = [
+    { title: "Netflix Subscription", sub: "Entertainment", amt: "-$14.99", date: "Today",   icon: "🎬" },
+    { title: "Salary Deposit",       sub: "TechCorp Inc.", amt: "+$3,200", date: "Feb 28",  icon: "💰" },
+    { title: "Grocery Market",       sub: "Food & Drink",  amt: "-$64.20", date: "Feb 26",  icon: "🛒" },
+    { title: "Uber Ride",            sub: "Transport",     amt: "-$12.50", date: "Feb 25",  icon: "🚗" },
+    { title: "Spotify Premium",      sub: "Entertainment", amt: "-$9.99",  date: "Feb 24",  icon: "🎧" },
+  ];
+  const spendingHistory = [30, 45, 32, 60, 40, 55, 30, 25, 40, 35, 20, 50];
+
+  // NEW DUMMY DATA FOR UPCOMING PAYMENTS
+  const upcomingBills = [
+    { title: "Internet Fiber",  due: "Due in 2 days", amt: "$45.00", icon: "🌐", status: "Unpaid" },
+    { title: "Car Insurance",   due: "Due in 5 days", amt: "$120.00",icon: "🛡️", status: "Auto-pay" },
+    { title: "Adobe Cloud",     due: "Mar 05",        amt: "$52.99", icon: "☁️", status: "Pending" },
+    { title: "Gym Membership",  due: "Mar 08",        amt: "$35.00", icon: "🏋️", status: "Pending" },
+  ];
 
   return (
     <>
-      {/* Balance hero */}
-      <div className="balance-hero">
-        <div className="balance-left">
-          <div className="balance-label">Total Balance</div>
-          <div className="balance-val">$24,830<span className="balance-cents">.50</span></div>
-          <div className="balance-meta">
-            <div className="balance-meta-item">
-              <span className="meta-label">Income</span>
-              <span className="meta-val income">+$3,240</span>
-            </div>
-            <div className="balance-meta-item">
-              <span className="meta-label">Expenses</span>
-              <span className="meta-val expense">-$1,890</span>
-            </div>
-          </div>
-        </div>
-        <div className="balance-card-chip">
-          <div className="chip-number">•••• •••• •••• 4291</div>
-          <div className="chip-type">Visa Platinum</div>
-        </div>
-      </div>
-
-      {/* KPI cards */}
+      {/* 1. Wallet Cards */}
       <div className="kpi-row three-col">
-        {[
-          { label: "Savings",   val: "$12,400", trend: "+5.2%", up: true,  data: [1200,1250,1180,1300,1420,1500,1620,1700] },
-          { label: "Spending",  val: "$1,890",  trend: "-2.1%", up: false, data: [340,380,290,420,380,340,410,380] },
-          { label: "Transfers", val: "$3,240",  trend: "+11%",  up: true,  data: [800,950,870,1100,1050,1200,1150,1300] },
-        ].map((k, i) => (
-          <div key={i} className="kpi-card user-kpi" style={{ animationDelay: `${i * 80}ms` }}>
-            <div className="kpi-top">
-              <span className="kpi-label-sm">{k.label}</span>
-              <div className={`kpi-badge ${k.up ? "badge-up" : "badge-down"}`}>{k.trend}</div>
-            </div>
-            <div className="kpi-val">{k.val}</div>
-            <Sparkline data={k.data} color={k.up ? "var(--user-accent)" : "#ef4444"} width={120} height={36} />
+        <div className="kpi-card" style={{ borderTop: "3px solid var(--user-accent)" }}>
+          <div className="kpi-top">
+            <div className="kpi-icon-box" style={{ background: "#e0f2fe", color: "var(--user-accent)" }}>💳</div>
+            <div className="kpi-badge badge-up">+2%</div>
           </div>
-        ))}
+          <div className="kpi-val">$2,450.00</div>
+          <div className="kpi-label">Available Balance</div>
+        </div>
+        <div className="kpi-card" style={{ borderTop: "3px solid #f59e0b" }}>
+          <div className="kpi-top">
+            <div className="kpi-icon-box" style={{ background: "#fef3c7", color: "#f59e0b" }}>📉</div>
+            <div className="kpi-badge badge-down">-5%</div>
+          </div>
+          <div className="kpi-val">$840.50</div>
+          <div className="kpi-label">Monthly Spending</div>
+        </div>
+        <div className="kpi-card" style={{ borderTop: "3px solid #10b981" }}>
+          <div className="kpi-top">
+            <div className="kpi-icon-box" style={{ background: "#d1fae5", color: "#10b981" }}>🏦</div>
+            <div className="kpi-badge badge-up">+12%</div>
+          </div>
+          <div className="kpi-val">$12,050.00</div>
+          <div className="kpi-label">Total Savings</div>
+        </div>
       </div>
 
       <div className="mid-row">
-        {/* Transactions */}
+        {/* 2. Spending Analysis */}
         <div className="card flex-2">
           <div className="card-head">
-            <h3>Recent Transactions</h3>
-            <span className="see-all">See all →</span>
+              <h3>Spending Analysis</h3>
+              <button className="icon-btn">Last 30 Days</button>
           </div>
-          <div className="tx-list">
-            {[
-              { icon: "🛍️", name: "Amazon Shopping", cat: "Shopping",     amt: "-$89.99",  date: "Today, 2:30pm", col: "#ef4444" },
-              { icon: "💡", name: "Electric Bill",   cat: "Utilities",    amt: "-$124.00", date: "Yesterday",     col: "#ef4444" },
-              { icon: "💰", name: "Salary Credit",   cat: "Income",       amt: "+$3,240",  date: "Mar 1",         col: "#10b981" },
-              { icon: "🎵", name: "Spotify",         cat: "Subscription", amt: "-$9.99",   date: "Feb 28",        col: "#ef4444" },
-              { icon: "🍕", name: "Domino's Pizza",  cat: "Food",         amt: "-$24.50",  date: "Feb 27",        col: "#ef4444" },
-            ].map((tx, i) => (
-              <div key={i} className="tx-row">
-                <div className="tx-icon-box">{tx.icon}</div>
-                <div className="tx-info">
-                  <div className="cell-name">{tx.name}</div>
-                  <div className="cell-sub">{tx.cat} · {tx.date}</div>
-                </div>
-                <div className="tx-amt" style={{ color: tx.col }}>{tx.amt}</div>
+          <div className="chart-row">
+              <BarChart bars={spendingHistory} color="var(--user-accent)" />
+              <div className="chart-side-legend">
+                 <div className="legend-row">
+                    <span>🛍️</span>
+                    <div><div className="legend-label">Shopping</div><div className="legend-val">45%</div></div>
+                 </div>
+                 <div className="legend-row">
+                    <span>🍔</span>
+                    <div><div className="legend-label">Food</div><div className="legend-val">30%</div></div>
+                 </div>
               </div>
-            ))}
           </div>
         </div>
 
-        {/* Quick Actions + Spend chart */}
-        <div className="right-col">
-          <div className="card">
-            <div className="card-head"><h3>Quick Actions</h3></div>
-            <div className="quick-grid">
-              {[["💸","Send"],["📥","Receive"],["🔄","Exchange"],["📋","Statement"],["🎯","Goals"],["🛡️","Insure"]].map(([ic,l])=>(
-                <div key={l} className="quick-btn">
-                  <span className="quick-icon">{ic}</span>
-                  <span className="quick-label">{l}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+        {/* 3. Quick Actions */}
+        <div className="card flex-1" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', justifyContent: 'center' }}>
+           <div className="card-head"><h3>Quick Actions</h3></div>
+           <button className="add-btn" style={{ width: '100%', background: "var(--user-accent)" }}>💸 Send Money</button>
+           <button className="add-btn" style={{ width: '100%', background: "#fff", border: "1px solid #ddd", color: "#333" }}>➕ Top Up Wallet</button>
+           <button className="add-btn" style={{ width: '100%', background: "#fff", border: "1px solid #ddd", color: "#333" }}>🔒 Freeze Card</button>
+        </div>
+      </div>
 
-          <div className="card">
-            <div className="card-head"><h3>Monthly Spend</h3></div>
-            <div className="spend-spark">
-              <Sparkline data={spendData} color="var(--user-accent)" width={200} height={60} />
-              <div className="spend-labels">
-                {["Jan","","","Apr","","","Jul","","","Oct","","Dec"].map((l,i)=>(
-                  <span key={i} className="spend-label">{l}</span>
-                ))}
-              </div>
-            </div>
+      {/* 4. Transactions & Upcoming Bills */}
+      <div className="bot-row">
+        <div className="card flex-2">
+          <div className="card-head">
+              <h3>Recent Transactions</h3>
+          </div>
+          <div className="audit-list">
+              {transactions.map((t, i) => (
+                 <div key={i} className="audit-row">
+                    <div className="audit-icon-box" style={{ background: "#f1f5f9" }}>{t.icon}</div>
+                    <div className="audit-text">
+                       <div className="audit-ev">{t.title}</div>
+                       <div className="audit-actor">{t.sub}</div>
+                    </div>
+                    <div style={{ marginLeft: "auto", textAlign: "right" }}>
+                       <div style={{ fontWeight: "700", color: t.amt.startsWith("+") ? "#10b981" : "#333" }}>{t.amt}</div>
+                       <div style={{ fontSize: "10px", color: "#94a3b8" }}>{t.date}</div>
+                    </div>
+                 </div>
+              ))}
+          </div>
+        </div>
+
+        {/* Upcoming Bills */}
+        <div className="card flex-1">
+          <div className="card-head">
+             <h3>Upcoming Bills</h3>
+             <button className="icon-btn" style={{ fontSize: '10px' }}>View All</button>
+          </div>
+          <div className="audit-list">
+             {upcomingBills.map((b, i) => (
+                <div key={i} className="audit-row">
+                   <div className="audit-icon-box" style={{ background: "#fff5e9", color: "#f97316" }}>{b.icon}</div>
+                   <div className="audit-text">
+                      <div className="audit-ev">{b.title}</div>
+                      <div className="audit-actor" style={{ color: b.status === "Unpaid" ? "#ef4444" : "#64748b" }}>
+                         {b.due}
+                      </div>
+                   </div>
+                   <div style={{ textAlign: "right" }}>
+                      <div style={{ fontWeight: "600" }}>{b.amt}</div>
+                   </div>
+                </div>
+             ))}
           </div>
         </div>
       </div>
@@ -550,7 +509,7 @@ function UserView({ user }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// IDENTITY SIDEBAR CARD (shared right panel)
+// IDENTITY SIDEBAR CARD
 // ═══════════════════════════════════════════════════════════════════════════════
 function IdentityCard({ user, roleType }) {
   return (
@@ -583,8 +542,8 @@ function IdentityCard({ user, roleType }) {
 
       <div className="card status-card">
         {[
-          { icon: "👤", bg: "#e7ffeb", col: "#10b981", title: "Online",    sub: "Active Status"         },
-          { icon: "🕒", bg: "#fff5e9", col: "#ffbb38", title: "Session",   sub: "Token Active"          },
+          { icon: "👤", bg: "#e7ffeb", col: "#10b981", title: "Online",    sub: "Active Status"           },
+          { icon: "🕒", bg: "#fff5e9", col: "#ffbb38", title: "Session",   sub: "Token Active"           },
           { icon: "🔒", bg: "#f0f4ff", col: "#6366f1", title: "Protected", sub: `${roleType} privileges` },
         ].map(({ icon, bg, col, title, sub }) => (
           <div key={title} className="status-row">
@@ -607,6 +566,7 @@ function Dashboard() {
   const [user, setUser]               = useState(null);
   const [isLoading, setIsLoading]     = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [activeNav, setActiveNav]     = useState("System Overview");
   const [timeLeft, setTimeLeft]       = useState(null);
   const profileRef = useRef(null);
 
@@ -616,7 +576,6 @@ function Dashboard() {
         const u = data?.data || data;
         setUser(u);
         setIsLoading(false);
-        // Seed timer from token expiry if available
         if (u?.exp) {
           const remaining = u.exp - Math.floor(Date.now() / 1000);
           setTimeLeft(remaining > 0 ? remaining : 0);
@@ -625,22 +584,20 @@ function Dashboard() {
       .catch(() => setIsLoading(false));
   }, []);
 
-  // ── Countdown tick ──────────────────────────────────────────────────────────
+  // Countdown tick
   useEffect(() => {
     if (timeLeft === null) return;
     if (timeLeft <= 0) { logout(); return; }
-
     const iv = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) { clearInterval(iv); logout(); return 0; }
         return prev - 1;
       });
     }, 1000);
-
     return () => clearInterval(iv);
-  }, [timeLeft === null]); // only re-run when timer first becomes available
+  }, [timeLeft === null]);
 
-  // ── Refresh token at 30 s remaining ────────────────────────────────────────
+  // Refresh token at 30s remaining
   useEffect(() => {
     if (timeLeft !== 30) return;
     fetch("http://localhost:8000/refresh", { method: "POST", credentials: "include" })
@@ -657,7 +614,6 @@ function Dashboard() {
       .catch(() => logout());
   }, [timeLeft]);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handler = (e) => {
       if (profileRef.current && !profileRef.current.contains(e.target)) {
@@ -694,12 +650,25 @@ function Dashboard() {
   const pageTitle = {
     admin:   "Administrator Console",
     manager: "Manager's Dashboard",
-    user:    "My Wallet Dashboard",
+    user:    "User Dashboard",
   }[roleType];
 
   const initials = (user?.preferred_username || user?.name || "U")
     .substring(0, 2)
     .toUpperCase();
+
+  // ─── MAIN CONTENT RENDER LOGIC ──────────────────────────────────────────────
+  const renderContent = () => {
+    // 1. Check if User Management is active
+    if (activeNav === "User Management") {
+      return <UserManagement />;
+    }
+    // 2. Fallback to Role-based Views
+    if (roleType === "admin")   return <AdminView user={user} />;
+    if (roleType === "manager") return <ManagerView user={user} />;
+    if (roleType === "user")    return <UserView    user={user} />;
+    return <div>Role not recognized</div>;
+  };
 
   return (
     <div className={`layout role-${roleType}`}>
@@ -709,12 +678,15 @@ function Dashboard() {
         <div className="brand">{cfg.brand}</div>
 
         <nav className="nav-menu">
-          {cfg.navItems.map(({ icon, label, active }) => (
+          {cfg.navItems.map(({ icon, label }) => (
             <a
               key={label}
               href="#"
-              onClick={(e) => e.preventDefault()}
-              className={`nav-item ${active ? "nav-active" : ""}`}
+              onClick={(e) => { 
+                e.preventDefault(); 
+                setActiveNav(label); 
+              }}
+              className={`nav-item ${activeNav === label ? "nav-active" : ""}`}
             >
               <span className="nav-icon">{icon}</span>
               {label}
@@ -739,8 +711,10 @@ function Dashboard() {
         {/* Header */}
         <header className="topbar">
           <div className="topbar-left">
-            <h1 className="page-title">{pageTitle}</h1>
-            {timeLeft !== null && (() => {
+            <h1 className="page-title">{activeNav === "User Management" ? "User Management" : pageTitle}</h1>
+            
+            {/* TIMER FIX: ONLY SHOW IF ROLE IS USER */}
+            {roleType === "user" && timeLeft !== null && (() => {
               const mins = Math.floor(timeLeft / 60);
               const secs = timeLeft % 60;
               const isUrgent = timeLeft <= 30;
@@ -797,9 +771,7 @@ function Dashboard() {
         {/* Content */}
         <div className="content-area">
           <div className="content-main">
-            {roleType === "admin"   && <AdminView   user={user} />}
-            {roleType === "manager" && <ManagerView user={user} />}
-            {roleType === "user"    && <UserView    user={user} />}
+             {renderContent()}
           </div>
 
           <IdentityCard user={user} roleType={roleType} />

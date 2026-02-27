@@ -663,7 +663,7 @@ button { cursor: pointer; font-family: var(--font); }
   display: inline-block;
 }
 .chip-green  { background: #dcfce7; color: #16a34a; }
-.chip-red    { background: #fee2e2; color: #dc2626; }
+.chip-red    { background: #fee2e2; color: #1d11ca; }
 .chip-yellow { background: #fef9c3; color: #ca8a04; }
 
 .action-cell { gap: 6px; }

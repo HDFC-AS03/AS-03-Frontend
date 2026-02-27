@@ -68,7 +68,7 @@ function LandingPage() {
 
   <button 
     className="lp-ghost-btn" 
-    onClick={() => window.open('https://youtu.be/dQw4w9WgXcQ?si=bUW8a11DvoNarOOm', '_blank', 'noopener,noreferrer')}
+    onClick={() => window.open('https://youtu.be/iuJDhFRDx9M?si=DFj4U2PtrxvJHCBC', '_blank', 'noopener,noreferrer')}
   >
     Watch demo ▶
   </button>
