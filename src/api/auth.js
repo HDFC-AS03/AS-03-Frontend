@@ -17,5 +17,7 @@ export async function getCurrentUser() {
     throw new Error("Not authenticated");
   }
 
-  return response.json();
+  const result = await response.json();
+  return result.data;  
+
 }
