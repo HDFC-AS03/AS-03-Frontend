@@ -713,8 +713,8 @@ function Dashboard() {
           <div className="topbar-left">
             <h1 className="page-title">{activeNav === "User Management" ? "User Management" : pageTitle}</h1>
             
-            {/* TIMER FIX: ONLY SHOW IF ROLE IS USER */}
-            {roleType === "user" && timeLeft !== null && (() => {
+            {/* UPDATED: Timer now shows for ALL roles (removed role check) */}
+            {timeLeft !== null && (() => {
               const mins = Math.floor(timeLeft / 60);
               const secs = timeLeft % 60;
               const isUrgent = timeLeft <= 30;
