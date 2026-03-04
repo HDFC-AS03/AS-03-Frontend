@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { getCurrentUser, logout } from "../api/auth";
+import { getCurrentUser, logout, refreshAccessToken, parseTokensFromHash } from "../api/auth";
 import "./Dashboard.css";
 
 // ─── ROLE DETECTION ───────────────────────────────────────────────────────────
@@ -611,9 +611,11 @@ function Dashboard() {
   const profileRef = useRef(null);
 
   useEffect(() => {
+    // Parse tokens from URL hash if present (after OAuth callback)
+    parseTokensFromHash();
+    
     getCurrentUser()
-      .then((data) => {
-        const u = data?.data || data;
+      .then((u) => {
         setUser(u);
         setIsLoading(false);
         // Seed timer from token expiry if available
@@ -643,11 +645,12 @@ function Dashboard() {
   // ── Refresh token at 30 s remaining ────────────────────────────────────────
   useEffect(() => {
     if (timeLeft !== 30) return;
-    fetch("http://localhost:8000/refresh", { method: "POST", credentials: "include" })
-      .then((res) => { if (!res.ok) throw new Error(); return res.json(); })
-      .then(() => getCurrentUser())
-      .then((data) => {
-        const u = data?.data || data;
+    refreshAccessToken()
+      .then((success) => {
+        if (!success) throw new Error('Refresh failed');
+        return getCurrentUser();
+      })
+      .then((u) => {
         setUser(u);
         if (u?.exp) {
           const remaining = u.exp - Math.floor(Date.now() / 1000);
