@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { getCurrentUser, logout, refreshAccessToken, parseTokensFromHash } from "../api/auth";
+import { getCurrentUser, logout, refreshAccessToken } from "../api/auth";
 import "./Dashboard.css";
 
 // ─── ROLE DETECTION ───────────────────────────────────────────────────────────
@@ -611,9 +611,7 @@ function Dashboard() {
   const profileRef = useRef(null);
 
   useEffect(() => {
-    // Parse tokens from URL hash if present (after OAuth callback)
-    parseTokensFromHash();
-    
+    // With httpOnly cookies, tokens are handled automatically by the browser
     getCurrentUser()
       .then((u) => {
         setUser(u);
