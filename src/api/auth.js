@@ -1,87 +1,83 @@
-import { 
-  getAccessToken,
-  setAccessToken,
-  getRefreshToken,
-  setRefreshToken,
-  clearTokens,
-  getUserFromToken,
-  isTokenExpired,
-  parseTokensFromHash 
-} from './tokenStorage.js';
+/**
+ * Auth API (httpOnly Cookie Mode)
+ * 
+ * Enterprise pattern: Frontend NEVER handles tokens
+ * - Access token: httpOnly cookie (set by backend)
+ * - Refresh token: httpOnly cookie (set by backend)
+ * - CSRF token: readable cookie (for POST/PUT/DELETE protection)
+ * 
+ * The browser automatically sends httpOnly cookies with credentials: 'include'
+ */
 
-// Gateway URL for all API requests
+// Gateway URL - all requests go through API gateway
 const GATEWAY_URL = "http://localhost";
 
 /**
+ * Get CSRF token from cookie (set by backend)
+ */
+function getCsrfToken() {
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+/**
  * Make authenticated fetch request through gateway
- * Automatically adds Bearer token and handles token refresh
+ * Browser automatically sends httpOnly cookies
  */
 export async function authFetch(endpoint, options = {}) {
-  // Check if token needs refresh
-  if (isTokenExpired(30)) {
-    const refreshed = await refreshAccessToken();
-    if (!refreshed) {
-      clearTokens();
-      throw new Error("Session expired");
+  const headers = { ...options.headers };
+  
+  // Add CSRF token for state-changing requests
+  const method = (options.method || 'GET').toUpperCase();
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+    const csrfToken = getCsrfToken();
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
     }
   }
-  
-  const accessToken = getAccessToken();
-  if (!accessToken) {
-    throw new Error("Not authenticated");
-  }
-  
-  const headers = {
-    ...options.headers,
-    'Authorization': `Bearer ${accessToken}`,
-  };
   
   const response = await fetch(`${GATEWAY_URL}${endpoint}`, {
     ...options,
     headers,
+    credentials: 'include', // Send httpOnly cookies automatically
   });
-  
-  // If 401, try refresh once
-  if (response.status === 401) {
-    const refreshed = await refreshAccessToken();
-    if (refreshed) {
-      headers['Authorization'] = `Bearer ${getAccessToken()}`;
-      return fetch(`${GATEWAY_URL}${endpoint}`, { ...options, headers });
-    }
-    clearTokens();
-    throw new Error("Session expired");
-  }
   
   return response;
 }
 
+export function login() {
+  window.location.href = `${GATEWAY_URL}/login`;
+}
+
+export function logout() {
+  window.location.href = `${GATEWAY_URL}/logout`;
+}
+
 /**
- * Refresh access token using refresh token
- * Sends refresh_token in request body (development mode)
+ * Get current user from backend
+ * Backend reads access_token from httpOnly cookie
+ */
+export async function getCurrentUser() {
+  const response = await authFetch('/me');
+  
+  if (!response.ok) {
+    throw new Error("Not authenticated");
+  }
+  
+  const result = await response.json();
+  return result.data;
+}
+
+/**
+ * Refresh access token using httpOnly refresh_token cookie
  */
 export async function refreshAccessToken() {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) return false;
-  
   try {
-    const response = await fetch(`${GATEWAY_URL}/refresh`, {
+    const response = await authFetch('/refresh', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: refreshToken }),
     });
-    
-    if (!response.ok) return false;
-    
-    const data = await response.json();
-    if (data.access_token) {
-      setAccessToken(data.access_token);
-      // Update refresh token if returned (token rotation)
-      if (data.refresh_token) {
-        setRefreshToken(data.refresh_token);
-      }
-      return true;
-    }
-    return false;
+    return response.ok;
   } catch (e) {
     console.error('Token refresh failed:', e);
     return false;
@@ -89,82 +85,13 @@ export async function refreshAccessToken() {
 }
 
 /**
- * Redirect to login page
- */
-export function login() {
-  window.location.href = `${GATEWAY_URL}/login`;
-}
-
-/**
- * Logout - clear tokens and redirect (through gateway)
- */
-export function logout() {
-  clearTokens();
-  window.location.href = `${GATEWAY_URL}/logout`;
-}
-
-/**
- * Get current user info
- * 1. Check for tokens in URL hash (after OAuth callback)
- * 2. If no token in memory, try refresh using stored refresh token
- * 3. Validate token through gateway /me endpoint
- */
-export async function getCurrentUser() {
-  // Check for tokens in URL hash (after OAuth callback)
-  parseTokensFromHash();
-  
-  // If no token in memory, try refresh using stored refresh token
-  if (!getAccessToken()) {
-    const refreshed = await refreshAccessToken();
-    if (!refreshed) {
-      throw new Error("Not authenticated");
-    }
-  }
-  
-  // Get user from stored token
-  const user = getUserFromToken();
-  if (!user) {
-    throw new Error("Not authenticated");
-  }
-  
-  // Validate token through gateway (RS256 signature verification)
-  try {
-    const response = await authFetch('/me');
-    if (response.ok) {
-      // Token validated by gateway, return user info
-      return user;
-    }
-  } catch (e) {
-    // Gateway validation failed - try local token only
-    console.warn('Gateway validation failed, using local token:', e.message);
-  }
-  
-  // Fallback: if gateway unreachable but token exists, still show user
-  return user;
-}
-
-/**
  * Check if user is authenticated
  */
-export function isAuthenticated() {
-  return !!getAccessToken() && !isTokenExpired(0);
-}
-
-/**
- * Initialize auth - call on app mount to restore session
- * Attempts refresh using stored refresh token
- */
-export async function initAuth() {
-  // Check URL hash first (OAuth callback)
-  parseTokensFromHash();
-  
-  // If no token in memory but have refresh token, try refresh
-  if (!getAccessToken() && getRefreshToken()) {
-    await refreshAccessToken();
+export async function isAuthenticated() {
+  try {
+    const response = await authFetch('/me');
+    return response.ok;
+  } catch {
+    return false;
   }
-  
-  return isAuthenticated();
 }
-
-// Export token utilities for dashboard
-export { getAccessToken, getRefreshToken, clearTokens, isTokenExpired, parseTokensFromHash };
