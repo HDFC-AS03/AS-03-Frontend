@@ -1,398 +1,397 @@
 import React, { useState, useRef, useEffect } from "react";
 
 const API_BASE = "http://localhost:8000";
-const ROLES = ["Manager", "User"];
+
+const ROLE_MAP = {
+  Manager: "manager",
+  User: "user",
+};
+const ROLE_LABELS = Object.keys(ROLE_MAP);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+function toLabel(roleKey) {
+  const found = Object.entries(ROLE_MAP).find(([, v]) => v === roleKey);
+  return found ? found[0] : roleKey;
+}
+
+function toKey(label) {
+  return ROLE_MAP[label] ?? label.toLowerCase();
+}
+
 const PAGE_SIZE = 5;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// StatusChip
+// ─────────────────────────────────────────────────────────────────────────────
 function StatusChip({ status }) {
-  const config = {
-    Active: { color: "green" },
-    Inactive: { color: "orange" },
-    Suspended: { color: "red" },
-  }[status] || { color: "gray" };
+  const chipClass = 
+    status === "Active" ? "chip-green" : 
+    status === "Inactive" ? "chip-yellow" : 
+    "chip-red";
 
   return (
-    <span style={{ color: config.color, fontWeight: 600 }}>
+    <span className={`status-chip ${chipClass}`}>
       {status}
     </span>
   );
 }
 
-export default function UserManagement() {
+// ─────────────────────────────────────────────────────────────────────────────
+// RoleChip
+// ─────────────────────────────────────────────────────────────────────────────
+function RoleChip({ label, onRemove, disabled }) {
+  return (
+    <span className="role-chip" style={{ display: "inline-flex", alignItems: "center", gap: 6, margin: "0 6px 6px 0" }}>
+      {label}
+      {onRemove && (
+        <button
+          onClick={onRemove}
+          disabled={disabled}
+          title={`Remove ${label} role`}
+          className="chip-remove-btn"
+        >
+          ×
+        </button>
+      )}
+    </span>
+  );
+}
 
+// ─────────────────────────────────────────────────────────────────────────────
+// RoleManagerModal
+// ─────────────────────────────────────────────────────────────────────────────
+function RoleManagerModal({ user, onClose }) {
+  const [currentRoles, setCurrentRoles] = useState([]);
+  const [loadingRoles, setLoadingRoles] = useState(true);
+  const [selectedRole, setSelectedRole] = useState(ROLE_LABELS[0]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+
+  useEffect(() => { fetchCurrentRoles(); }, []);
+
+  const fetchCurrentRoles = async () => {
+    setLoadingRoles(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/${user.id}/roles`, { credentials: "include" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const roles = json.data ?? json;
+      const roleKeys = roles.map(r => r.name).filter(name => Object.values(ROLE_MAP).includes(name));
+      setCurrentRoles(roleKeys);
+    } catch (err) {
+      setError("Could not load current roles: " + err.message);
+    }
+    setLoadingRoles(false);
+  };
+
+  const flash = (msg, isError = false) => {
+    if (isError) { setError(msg); setSuccess(null); }
+    else { setSuccess(msg); setError(null); }
+    setTimeout(() => { setError(null); setSuccess(null); }, 3000);
+  };
+
+  const handleAssign = async () => {
+    const roleKey = toKey(selectedRole);
+    if (currentRoles.includes(roleKey)) { flash(`${selectedRole} is already listed.`, true); return; }
+    setBusy(true);
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/${user.id}/roles?role_name=${encodeURIComponent(roleKey)}`, { method: "POST", credentials: "include" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+      await fetchCurrentRoles();
+      flash(`✓ ${selectedRole} assigned`);
+    } catch (err) { flash("Assign failed: " + err.message, true); }
+    setBusy(false);
+  };
+
+  const handleRemove = async (roleKey) => {
+    setBusy(true);
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/${user.id}/roles?role_name=${encodeURIComponent(roleKey)}`, { method: "DELETE", credentials: "include" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+      await fetchCurrentRoles();
+      flash(`✓ ${toLabel(roleKey)} removed`);
+    } catch (err) { flash("Remove failed: " + err.message, true); }
+    setBusy(false);
+  };
+
+  const handleReplace = async (oldRoleKey) => {
+    const newRoleKey = toKey(selectedRole);
+    if (oldRoleKey === newRoleKey) { flash("Pick a different role.", true); return; }
+    setBusy(true);
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/${user.id}/roles?old_role=${encodeURIComponent(oldRoleKey)}&new_role=${encodeURIComponent(newRoleKey)}`, { method: "PUT", credentials: "include" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+      await fetchCurrentRoles();
+      flash(`✓ Replaced ${toLabel(oldRoleKey)} → ${selectedRole}`);
+    } catch (err) { flash("Replace failed: " + err.message, true); }
+    setBusy(false);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="card modal-card" style={{ width: 480 }}>
+        <div className="card-head">
+          <h3>🛡️ Manage Roles</h3>
+          <button onClick={onClose} className="close-btn">×</button>
+        </div>
+        
+        <div className="um-user-summary">
+          <strong>{user.name}</strong>
+          <span>{user.email}</span>
+        </div>
+
+        <div className="um-section">
+          <label>Current Roles</label>
+          {loadingRoles ? (
+            <span className="um-muted-text">Loading…</span>
+          ) : currentRoles.length === 0 ? (
+            <div className="um-empty-box">No roles assigned. Add one below.</div>
+          ) : (
+            <div>
+              {currentRoles.map(roleKey => (
+                <RoleChip key={roleKey} label={toLabel(roleKey)} disabled={busy} onRemove={() => handleRemove(roleKey)} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <hr className="um-divider" />
+
+        <div className="um-section">
+          <label>Assign or Replace Role</label>
+          <div className="um-flex-row">
+            <select className="um-input" value={selectedRole} onChange={e => setSelectedRole(e.target.value)} disabled={busy}>
+              {ROLE_LABELS.map(r => <option key={r}>{r}</option>)}
+            </select>
+            <button className="add-btn admin-add-btn" onClick={handleAssign} disabled={busy}>+ Assign</button>
+          </div>
+
+          {currentRoles.length > 0 && (
+            <div className="um-replace-area">
+              <span className="um-muted-text">Or replace an existing role:</span>
+              <div className="um-flex-wrap">
+                {currentRoles.map(roleKey => (
+                  <button key={roleKey} onClick={() => handleReplace(roleKey)} disabled={busy} className="um-replace-btn">
+                    {toLabel(roleKey)} → {selectedRole}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {error && <div className="um-alert error">{error}</div>}
+        {success && <div className="um-alert success">{success}</div>}
+
+        <div className="um-modal-footer">
+          <button className="um-btn-secondary" onClick={onClose}>Done</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main UserManagement component
+// ─────────────────────────────────────────────────────────────────────────────
+export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState(null);
-
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    role: "User"
-  });
+  const [form, setForm] = useState({ email: "", role: "User" });
+  const [formError, setFormError] = useState(null);
 
   const fileInputRef = useRef(null);
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
+  useEffect(() => { loadUsers(); }, []);
 
-  // ─────────────────────────
-  // LOAD USERS
-  // ─────────────────────────
   const loadUsers = async () => {
-
     setLoading(true);
-
     try {
-
-      const res = await fetch(`${API_BASE}/admin/users`, {
-        credentials: "include"
-      });
-
+      const res = await fetch(`${API_BASE}/admin/users`, { credentials: "include" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
       const json = await res.json();
       const data = json.data ?? json;
-
-      const formatted = data.map(u => ({
+      setUsers(data.map(u => ({
         id: u.id,
-        name: u.firstName || u.username || "User",
-        email: u.email,
-        role: u.roles?.[0] || "User",
+        name: u.firstName ? `${u.firstName} ${u.lastName || ""}`.trim() : u.username || "—",
+        email: u.email || "",
         status: u.enabled ? "Active" : "Inactive",
-      }));
-
-      setUsers(formatted);
-
+      })));
     } catch (err) {
       alert("Failed to load users: " + err.message);
     }
-
     setLoading(false);
   };
 
-  // ─────────────────────────
-  // ADD USER
-  // ─────────────────────────
   const handleAdd = async () => {
-
-    if (!form.email) {
-      alert("Email required");
-      return;
-    }
+    setFormError(null);
+    if (!form.email) return setFormError("Email is required.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return setFormError("Invalid email address.");
 
     try {
-
-      const payload = [{
-        username: form.email.split("@")[0],
-        email: form.email,
-        password: "ChangeMe123!",
-        role: form.role
-      }];
-
       const res = await fetch(`${API_BASE}/admin/bulk-users`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload)
+        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify([{ username: form.email.split("@")[0], email: form.email, role: toKey(form.role) }]),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const result = await res.json();
+      const failed = Array.isArray(result.data ?? result) ? (result.data ?? result).filter(r => r.status === "failed" || r.error) : [];
+      if (failed.length > 0) return setFormError("Failed: " + (failed[0].error || "Unknown error"));
 
       await loadUsers();
       setModal(null);
-
-    } catch (err) {
-      alert("Add user failed: " + err.message);
-    }
+    } catch (err) { setFormError("Add user failed: " + err.message); }
   };
 
-  // ─────────────────────────
-  // UPDATE ROLE
-  // ─────────────────────────
-  const handleEdit = async () => {
-
-    try {
-
-      const res = await fetch(`${API_BASE}/admin/users/${modal.user.id}/roles`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ role_name: form.role })
-      });
-
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-      await loadUsers();
-      setModal(null);
-
-    } catch (err) {
-      alert("Role update failed: " + err.message);
-    }
-  };
-
-  // ─────────────────────────
-  // DELETE USER
-  // ─────────────────────────
   const handleDelete = async () => {
-
     try {
-
-      const res = await fetch(`${API_BASE}/admin/users/${modal.user.id}`, {
-        method: "DELETE",
-        credentials: "include"
-      });
-
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
+      const res = await fetch(`${API_BASE}/admin/users/${modal.user.id}`, { method: "DELETE", credentials: "include" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
       await loadUsers();
       setModal(null);
-
-    } catch (err) {
-      alert("Delete failed: " + err.message);
-    }
+    } catch (err) { alert("Delete failed: " + err.message); }
   };
 
-  // ─────────────────────────
-  // CSV IMPORT
-  // ─────────────────────────
   const handleFileUpload = async (e) => {
-
     const file = e.target.files[0];
     if (!file) return;
-
+    e.target.value = "";
     const reader = new FileReader();
-
     reader.onload = async (event) => {
-
-      const lines = event.target.result.split("\n").slice(1);
-
-      const users = lines.map(line => {
-
-        const [name, email, role] = line.split(",");
-
-        if (!email) return null;
-
-        return {
-          username: email.split("@")[0],
-          email: email.trim(),
-          password: "ChangeMe123!",
-          role: role?.trim() || "User"
-        };
-
+      const usersToCreate = event.target.result.split("\n").slice(1).filter(l => l.trim()).map(line => {
+        const [, email, role] = line.split(",");
+        const cleanEmail = email?.trim();
+        if (!cleanEmail) return null;
+        return { username: cleanEmail.split("@")[0], email: cleanEmail, _role: role?.trim() || "user" };
       }).filter(Boolean);
 
+      if (!usersToCreate.length) return alert("No valid users found in CSV.");
+
       try {
-
         const res = await fetch(`${API_BASE}/admin/bulk-users`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(users)
+          method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+          body: JSON.stringify(usersToCreate.map(u => ({ username: u.username, email: u.email, role: u._role }))),
         });
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+        const result = await res.json();
         await loadUsers();
-
-        alert("Users imported successfully");
-
-      } catch (err) {
-        alert("Import failed: " + err.message);
-      }
-
+        const ok = (result.data ?? result).filter?.(r => r.status === "created").length ?? usersToCreate.length;
+        alert(`Import complete. ${ok} user(s) created.`);
+      } catch (err) { alert("Import failed: " + err.message); }
     };
-
     reader.readAsText(file);
   };
 
-  // ─────────────────────────
-  // FILTER
-  // ─────────────────────────
-  const filtered = users.filter(u =>
-    [u.name, u.email, u.role, u.status]
-      .join(" ")
-      .toLowerCase()
-      .includes(search.toLowerCase())
-  );
-
+  const filtered = users.filter(u => [u.name, u.email, u.status].join(" ").toLowerCase().includes(search.toLowerCase()));
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const paged = filtered.slice(
-    (page - 1) * PAGE_SIZE,
-    page * PAGE_SIZE
-  );
-
-  // ─────────────────────────
-  // UI
-  // ─────────────────────────
   return (
-    <div style={{ padding: 20 }}>
-
-      <h2>User Management</h2>
-
-      <div style={{ marginBottom: 20 }}>
-
-        <button onClick={() => {
-          setForm({ name: "", email: "", role: "User" });
-          setModal({ type: "add" });
-        }}>
-          Add User
-        </button>
-
-        <button
-          style={{ marginLeft: 10 }}
-          onClick={() => fileInputRef.current.click()}
-        >
-          Import CSV
-        </button>
-
-        <input
-          type="file"
-          ref={fileInputRef}
-          hidden
-          accept=".csv"
-          onChange={handleFileUpload}
-        />
-
+    <div className="card flex-1" style={{ display: "flex", flexDirection: "column" }}>
+      {/* HEADER */}
+      <div className="card-head um-header">
+        <div className="search-box">
+          <span>🔍</span>
+          <input placeholder="Search users…" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
+        </div>
+        <div className="um-actions">
+          <button className="add-btn um-btn-secondary" onClick={() => fileInputRef.current.click()}>📤 Import CSV</button>
+          <input type="file" ref={fileInputRef} hidden accept=".csv" onChange={handleFileUpload} />
+          <button className="add-btn admin-add-btn" onClick={() => { setForm({ email: "", role: "User" }); setFormError(null); setModal({ type: "add" }); }}>
+            + Add User
+          </button>
+        </div>
       </div>
 
-      <input
-        placeholder="Search users..."
-        value={search}
-        onChange={(e) => {
-          setSearch(e.target.value);
-          setPage(1);
-        }}
-      />
-
+      {/* TABLE */}
       {loading ? (
-        <p>Loading users...</p>
+        <div className="um-loading">Loading users…</div>
       ) : (
-
-        <table border="1" cellPadding="10" style={{ marginTop: 20 }}>
-
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-
-          <tbody>
-
-            {paged.map(u => (
-
-              <tr key={u.id}>
-
-                <td>{u.name}</td>
-                <td>{u.email}</td>
-                <td>{u.role}</td>
-                <td><StatusChip status={u.status} /></td>
-
-                <td>
-
-                  <button
-                    onClick={() => {
-                      setForm(u);
-                      setModal({ type: "edit", user: u });
-                    }}
-                  >
-                    Edit
-                  </button>
-
-                  <button
-                    onClick={() => setModal({ type: "delete", user: u })}
-                    style={{ marginLeft: 6 }}
-                  >
-                    Delete
-                  </button>
-
-                </td>
-
-              </tr>
-
-            ))}
-
-          </tbody>
-
-        </table>
-      )}
-
-      <div style={{ marginTop: 20 }}>
-        <button disabled={page === 1} onClick={() => setPage(p => p - 1)}>
-          Prev
-        </button>
-
-        <span style={{ margin: "0 10px" }}>
-          Page {page} / {totalPages}
-        </span>
-
-        <button disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>
-          Next
-        </button>
-      </div>
-
-      {/* ───────── MODALS ───────── */}
-
-      {modal?.type === "add" && (
-        <div className="modal">
-          <h3>Add User</h3>
-
-          <input
-            placeholder="Email"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-          />
-
-          <select
-            value={form.role}
-            onChange={(e) => setForm({ ...form, role: e.target.value })}
-          >
-            {ROLES.map(r => <option key={r}>{r}</option>)}
-          </select>
-
-          <div style={{ marginTop: 10 }}>
-            <button onClick={handleAdd}>Create</button>
-            <button onClick={() => setModal(null)}>Cancel</button>
+        <div className="user-table">
+          <div className="table-head um-table-grid">
+            <span className="th">User</span>
+            <span className="th">Status</span>
+            <span className="th">Actions</span>
           </div>
+          {paged.map(u => (
+            <div key={u.id} className="table-row um-table-grid">
+              <div className="td user-cell">
+                <div className="mini-av admin-av">
+                  {u.name !== "—" ? u.name.substring(0, 2).toUpperCase() : "U"}
+                </div>
+                <div>
+                  <div className="cell-name">{u.name}</div>
+                  <div className="cell-sub">{u.email}</div>
+                </div>
+              </div>
+              <div className="td"><StatusChip status={u.status} /></div>
+              <div className="td action-cell">
+                <button onClick={() => setModal({ type: "roles", user: u })} className="action-btn" title="Roles">🛡️</button>
+                <button onClick={() => setModal({ type: "delete", user: u })} className="action-btn" title="Delete">🗑️</button>
+              </div>
+            </div>
+          ))}
+          {paged.length === 0 && <div className="um-empty-box" style={{ marginTop: 20 }}>No users found matching your search.</div>}
         </div>
       )}
 
-      {modal?.type === "edit" && (
-        <div className="modal">
-          <h3>Edit Role</h3>
+      {/* PAGINATION */}
+      <div className="um-pagination">
+        <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="um-page-btn">Prev</button>
+        <span>Page <strong>{page}</strong> of {totalPages}</span>
+        <button disabled={page === totalPages} onClick={() => setPage(p => p + 1)} className="um-page-btn">Next</button>
+      </div>
 
-          <select
-            value={form.role}
-            onChange={(e) => setForm({ ...form, role: e.target.value })}
-          >
-            {ROLES.map(r => <option key={r}>{r}</option>)}
-          </select>
-
-          <div style={{ marginTop: 10 }}>
-            <button onClick={handleEdit}>Update</button>
-            <button onClick={() => setModal(null)}>Cancel</button>
+      {/* ── MODALS ── */}
+      {modal?.type === "add" && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(null)}>
+          <div className="card modal-card">
+            <div className="card-head">
+              <h3>Add New User</h3>
+              <button onClick={() => setModal(null)} className="close-btn">×</button>
+            </div>
+            <div className="um-flex-col">
+              <input placeholder="Email Address" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="um-input" />
+              <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} className="um-input">
+                {ROLE_LABELS.map(r => <option key={r}>{r}</option>)}
+              </select>
+            </div>
+            {formError && <div className="um-alert error">{formError}</div>}
+            <div className="um-modal-footer">
+              <button className="um-btn-secondary" onClick={() => setModal(null)}>Cancel</button>
+              <button className="add-btn admin-add-btn" onClick={handleAdd}>Create User</button>
+            </div>
           </div>
         </div>
       )}
 
       {modal?.type === "delete" && (
-        <div className="modal">
-          <h3>Delete User</h3>
-
-          <p>Delete {modal.user.email} ?</p>
-
-          <button onClick={handleDelete}>Confirm</button>
-          <button onClick={() => setModal(null)}>Cancel</button>
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(null)}>
+          <div className="card modal-card" style={{ width: 400 }}>
+             <div className="card-head">
+              <h3 style={{ color: "var(--admin-accent)" }}>Delete User</h3>
+              <button onClick={() => setModal(null)} className="close-btn">×</button>
+            </div>
+            <p className="um-muted-text" style={{ fontSize: 14 }}>
+              Are you sure you want to permanently delete <strong>{modal.user.email}</strong>? This action cannot be undone.
+            </p>
+            <div className="um-modal-footer">
+              <button className="um-btn-secondary" onClick={() => setModal(null)}>Cancel</button>
+              <button className="add-btn" style={{ background: "var(--admin-accent)" }} onClick={handleDelete}>Delete User</button>
+            </div>
+          </div>
         </div>
       )}
 
+      {modal?.type === "roles" && <RoleManagerModal user={modal.user} onClose={() => setModal(null)} />}
     </div>
   );
 }
