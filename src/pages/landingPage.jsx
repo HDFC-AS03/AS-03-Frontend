@@ -3,7 +3,7 @@ import "./landingPage.css";
 
 function LandingPage() {
   const handleGetStarted = () => {
-    window.location.href = "http://localhost:8000/login";
+    window.location.href = "http://localhost/login";
   };
 
   return (
