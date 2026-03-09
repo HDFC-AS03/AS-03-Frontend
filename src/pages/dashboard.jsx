@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { getCurrentUser, logout } from "../api/auth";
+import { getCurrentUser, logout, refreshAccessToken } from "../api/auth";
 import "./Dashboard.css";
 // IMPORT the refactored UserManagement component
 import UserManagement from "./UserManagement"; 
@@ -571,9 +571,9 @@ function Dashboard() {
   const profileRef = useRef(null);
 
   useEffect(() => {
+    // With httpOnly cookies, tokens are handled automatically by the browser
     getCurrentUser()
-      .then((data) => {
-        const u = data?.data || data;
+      .then((u) => {
         setUser(u);
         setIsLoading(false);
         if (u?.exp) {
@@ -600,11 +600,12 @@ function Dashboard() {
   // Refresh token at 30s remaining
   useEffect(() => {
     if (timeLeft !== 30) return;
-    fetch("http://localhost:8000/refresh", { method: "POST", credentials: "include" })
-      .then((res) => { if (!res.ok) throw new Error(); return res.json(); })
-      .then(() => getCurrentUser())
-      .then((data) => {
-        const u = data?.data || data;
+    refreshAccessToken()
+      .then((success) => {
+        if (!success) throw new Error('Refresh failed');
+        return getCurrentUser();
+      })
+      .then((u) => {
         setUser(u);
         if (u?.exp) {
           const remaining = u.exp - Math.floor(Date.now() / 1000);
