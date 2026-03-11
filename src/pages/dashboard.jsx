@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { getCurrentUser, logout } from "../api/auth";
-import "./Dashboard.css";
+import "./dashboard.css";
 // IMPORT the refactored UserManagement component
 import UserManagement from "./UserManagement";
 
