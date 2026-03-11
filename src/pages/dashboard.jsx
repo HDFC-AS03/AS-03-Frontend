@@ -1032,14 +1032,24 @@ function Dashboard() {
       });
     }, 1000);
     return () => clearInterval(iv);
-  }, [timeLeft === null]);
+  }, [timeLeft]);
 
   // Refresh token at 30s remaining
   useEffect(() => {
     if (timeLeft !== 30) return;
-    fetch("http://localhost:8000/refresh", {
+
+    const csrfToken = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("csrf_token="))
+      ?.split("=")[1];
+
+    fetch("http://localhost/refresh", {
+      // ← gateway port 80, not 8000
       method: "POST",
       credentials: "include",
+      headers: {
+        "X-CSRF-Token": csrfToken || "", // ← required by your backend
+      },
     })
       .then((res) => {
         if (!res.ok) throw new Error();
