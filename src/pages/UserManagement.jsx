@@ -70,6 +70,7 @@ function RoleManagerModal({ user, onClose }) {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchCurrentRoles(); }, []);
 
   const fetchCurrentRoles = async () => {
