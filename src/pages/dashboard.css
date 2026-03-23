@@ -19,11 +19,11 @@
   --card-shadow:   0 2px 12px rgba(0, 0, 0, 0.05);
 
   /* Admin theme — deep crimson */
-  --admin-accent:  #dc2626;
-  --admin-dark:    #991b1b;
+  --admin-accent:  #667cb0;
+  --admin-dark:    #f5f5f5;
   --admin-light:   #fee2e2;
   --admin-sidebar: #0f172a;
-  --admin-nav-act: #dc2626;
+  --admin-nav-act: #f5f5f5;
 
   /* Manager theme — indigo-slate */
   --mgr-accent:   #4f46e5;
@@ -113,12 +113,12 @@ button { cursor: pointer; font-family: var(--font); }
   font-weight: 500;
   transition: var(--transition);
 }
-.nav-item:hover { color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.06); }
+.nav-item:hover { color: rgba(255,255,255,0.8); background: #667cb0; }
 
 .nav-icon { font-size: 16px; width: 20px; text-align: center; }
 
 /* Active nav per role */
-.role-admin   .nav-active { background: rgba(220,38,38,0.2);  color: #fca5a5; }
+.role-admin   .nav-active { background: #667cb0;  color: #dcd8d2; }
 .role-manager .nav-active { background: rgba(99,102,241,0.2); color: #c4b5fd; }
 .role-user    .nav-active { background: rgba(6,182,212,0.2);  color: #67e8f9; }
 
@@ -222,7 +222,7 @@ button { cursor: pointer; font-family: var(--font); }
 }
 .timer-urgent {
   background: #fff1f2;
-  color: #dc2626;
+  color: #d30000;
   border: 1px solid #fecaca;
   animation: timerPulse 1s ease-in-out infinite;
 }
@@ -277,7 +277,7 @@ button { cursor: pointer; font-family: var(--font); }
   top: 8px; right: 8px;
   width: 7px; height: 7px;
   border-radius: 50%;
-  background: #ef4444;
+  background: #ededed;
   border: 1.5px solid #fff;
 }
 
@@ -305,7 +305,7 @@ button { cursor: pointer; font-family: var(--font); }
 }
 .avatar-circle:hover { transform: scale(1.07); }
 
-.role-admin   .avatar-circle { background: linear-gradient(135deg, var(--admin-accent), #fb7185); }
+.role-admin   .avatar-circle { background:#667cb0; }
 .role-manager .avatar-circle { background: linear-gradient(135deg, var(--mgr-accent),   #818cf8); }
 .role-user    .avatar-circle { background: linear-gradient(135deg, var(--user-accent),   #22d3ee); }
 
@@ -364,7 +364,7 @@ button { cursor: pointer; font-family: var(--font); }
   text-transform: uppercase;
   letter-spacing: .4px;
 }
-.role-admin   .dropdown-role-pill { background: var(--admin-light); color: var(--admin-dark); }
+.role-admin   .dropdown-role-pill { background: #667cb0; color: var(--admin-dark); }
 .role-manager .dropdown-role-pill { background: var(--mgr-light);   color: var(--mgr-dark);   }
 .role-user    .dropdown-role-pill { background: var(--user-light);  color: var(--user-dark);  }
 
@@ -438,8 +438,14 @@ button { cursor: pointer; font-family: var(--font); }
   border-radius: var(--card-radius);
   padding: 20px;
   border: 1px solid var(--border);
+  border-top: 1px solid var(--border) !important;
   box-shadow: var(--card-shadow);
   animation: slideUp 0.4s ease both;
+}
+
+.kpi-card::before,
+.kpi-card::after {
+  display: none !important;
 }
 
 @keyframes slideUp {
@@ -457,11 +463,13 @@ button { cursor: pointer; font-family: var(--font); }
 .kpi-icon-box {
   width: 40px; height: 40px;
   border-radius: 12px;
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center; 
+  justify-content: center;
   font-size: 18px;
 }
-.admin-icon-box { background: var(--admin-light); }
-.mgr-icon-box   { background: var(--mgr-light);   }
+.admin-icon-box { background: #7da8d8; }
+.mgr-icon-box   { background: var(--mgr-light); }
 
 .kpi-badge {
   font-size: 11px;
@@ -483,7 +491,6 @@ button { cursor: pointer; font-family: var(--font); }
 
 .kpi-label    { font-size: 12px; color: var(--text-light); }
 .kpi-label-sm { font-size: 13px; color: var(--text-muted); font-weight: 500; }
-
 /* ─── ROW LAYOUTS ────────────────────────────────────────────────────────────── */
 .mid-row,
 .bot-row {
@@ -571,7 +578,7 @@ button { cursor: pointer; font-family: var(--font); }
   padding: 16px 24px;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 12px 30px rgba(220,38,38,0.3);
+  box-shadow: 0 12px 30px #dcd8d2 ;
   animation: slideUp 0.35s ease both;
 }
 
@@ -641,7 +648,7 @@ button { cursor: pointer; font-family: var(--font); }
   font-size: 11px; font-weight: 800; color: #fff;
   flex-shrink: 0;
 }
-.admin-av { background: linear-gradient(135deg, var(--admin-accent), #fb7185); }
+.admin-av { background: linear-gradient(135deg, var(--admin-accent), #6995e9); }
 .mgr-av   { background: linear-gradient(135deg, var(--mgr-accent),   #818cf8); }
 .user-av  { background: linear-gradient(135deg, var(--user-accent),  #22d3ee); }
 

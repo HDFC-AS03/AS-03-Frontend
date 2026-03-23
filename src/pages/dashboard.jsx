@@ -41,10 +41,6 @@ const SIDEBAR_CONFIG = {
         route: "/admin/console",
         adminOnly: true,
       },
-      { icon: "🔐", label: "Security Logs" },
-      { icon: "⚙️", label: "API Settings" },
-      { icon: "📊", label: "Audit Trail" },
-      { icon: "🛠️", label: "Configuration" },
     ],
   },
   manager: {
@@ -53,8 +49,6 @@ const SIDEBAR_CONFIG = {
     navItems: [
       { icon: "⊞", label: "Overview" },
       { icon: "👤", label: "Account", route: "/account" },
-      { icon: "📩", label: "Inbox" },
-      { icon: "👤", label: "Accounts" },
       { icon: "📄", label: "Invoices" },
       { icon: "📈", label: "Planning" },
       { icon: "⚙️", label: "Settings" },
